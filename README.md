@@ -39,3 +39,20 @@ components/ui/          # UI components
 ```
 
 See [INSTRUCTIONS.md](./INSTRUCTIONS.md) for assessment details.
+
+## Implementation Details
+
+### Weather Tool (`lib/tools/weather.ts`)
+- **API Integration**: Uses Open-Meteo API[https://open-meteo.com/] to fetch forecast data.
+- **Robust Error Handling**:
+  - Handles non 200 API responses.
+  - Catches network failures and JSON parsing errors.
+  - Returns structured error objects to the LLM.
+
+### Python Analysis Tool (`lib/tools/analyze.ts`)
+- **Execution Method**: Uses 'python3 -c' for reliable execution of code strings.
+- **Safety & Robustness**:
+  - **Timeouts**: Enforces a 10 second timeout to prevent infinite loops (ETIMEDOUT).
+  - **Large Output Support**: Configured with a 10MB 'maxBuffer' to handle extensive data analysis outputs.
+  - **Environment Checks**: Explicitly checks for 'python3' availability (ENOENT) and returns clear error messages if missing.
+  - **Error Capture**: Captures 'stderr' and returns it to the LLM for self-correction.
