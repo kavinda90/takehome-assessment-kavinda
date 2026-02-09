@@ -43,19 +43,64 @@ export const weatherTool = tool({
   description:
     "Get weather forecast data for a location. Use this when the user asks about weather, temperature, rain, wind, or forecasts for any location.",
   parameters: z.object({
-    // TODO: Define your parameters here
-    // Example:
-    // latitude: z.number().describe("Latitude of the location"),
-    // longitude: z.number().describe("Longitude of the location"),
+    latitude: z.number().describe("Latitude of the location"),
+    longitude: z.number().describe("Longitude of the location"),
+    forecast_days: z
+      .number()
+      .min(1)
+      .max(16)
+      .default(3)
+      .describe("Number of days to forecast (1-16)"),
+    daily: z
+      .array(z.string())
+      .default([
+        "temperature_2m_max",
+        "temperature_2m_min",
+        "precipitation_sum",
+        "weathercode",
+        "windspeed_10m_max",
+      ])
+      .describe(
+        "Weather variables to include. Defaults to max/min temp, precipitation, and wind speed.",
+      ),
+    timezone: z
+      .string()
+      .default("auto")
+      .describe("Timezone for the forecast. Defaults to auto."),
   }),
-  execute: async (params) => {
-    // TODO: Implement the weather data fetching logic
-    // 1. Build the API URL with query parameters
-    // 2. Fetch data from Open-Meteo
-    // 3. Return the parsed response
+  execute: async ({ latitude, longitude, forecast_days, daily, timezone }) => {
+    try {
+      const params = new URLSearchParams({
+        latitude: latitude.toString(),
+        longitude: longitude.toString(),
+        forecast_days: forecast_days.toString(),
+        daily: daily.join(","),
+        timezone,
+      });
 
-    return {
-      error: "Weather tool not implemented yet. See TODO comments in lib/tools/weather.ts",
-    };
+      // Build the API URL
+      const url = `https://api.open-meteo.com/v1/forecast?${params.toString()}`;
+
+      // Fetch the weather data
+      const response = await fetch(url);
+
+      // Handle API errors (non-200 status)
+      if (!response.ok) {
+        throw new Error(
+          `Weather API error: ${response.status} ${response.statusText}`,
+        );
+      }
+
+      // Parse the JSON response
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      // Handle network or JSON parsing errors
+      console.error("Error fetching weather data:", error);
+      return {
+        error:
+          error instanceof Error ? error.message : "Unknown error occurred",
+      };
+    }
   },
 });

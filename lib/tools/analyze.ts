@@ -52,18 +52,42 @@ export const analyzeTool = tool({
   description:
     "Execute Python code for data analysis, calculations, or processing. The LLM writes Python code, and this tool runs it and returns the output.",
   parameters: z.object({
-    // TODO: Define your parameters here
-    // Example:
-    // code: z.string().describe("Python code to execute"),
+    code: z.string().describe("Python code to execute"),
   }),
-  execute: async (params) => {
-    // TODO: Implement the Python code execution logic
-    // 1. Extract the code from params
-    // 2. Execute it with python3
-    // 3. Return stdout, stderr, and exit code
+  execute: async ({ code }) => {
+    try {
+      const { spawnSync } = require("child_process");
 
-    return {
-      error: "Analysis tool not implemented yet. See TODO comments in lib/tools/analyze.ts",
-    };
+      // Execute python3 using -c flag as requested in instructions
+      const execution = spawnSync("python3", ["-c", code], {
+        encoding: "utf-8",
+        timeout: 10000, // 10 seconds timeout
+        maxBuffer: 10 * 1024 * 1024, // 10MB
+      });
+
+      if (execution.error) {
+        // This handles errors like timeout or python not installed
+        if ((execution.error as any).code === "ETIMEDOUT") {
+          return { error: "Execution timed out (limit: 10 seconds)" };
+        }
+        if ((execution.error as any).code === "ENOENT") {
+          return { error: "Python 3 is not installed or not found in PATH" };
+        }
+        throw execution.error;
+      }
+
+      return {
+        stdout: execution.stdout,
+        // This handles runtime errors
+        stderr: execution.stderr,
+        exitCode: execution.status,
+      };
+    } catch (error) {
+      console.error("Error executing Python code:", error);
+      return {
+        error:
+          error instanceof Error ? error.message : "Unknown error occurred",
+      };
+    }
   },
 });
